@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Kocham Cię</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&display=swap">
+<style>
+:root{
+  --bg:#1a0b16; --bg2:#2d1024; --ink:#ffe4ec; --muted:#c99aac; --rose:#ff4f7b; --gold:#ffd9a3;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0;min-height:100%}
+body{
+  background:radial-gradient(ellipse at 50% 38%,var(--bg2) 0%,var(--bg) 70%) fixed var(--bg);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;min-height:100dvh;padding:16px 16px 24px;
+}
+main{width:100%;max-width:680px;display:flex;flex-direction:column;align-items:center}
+.stage{position:relative;width:100%;aspect-ratio:10/9}
+.stage::before{
+  content:"";position:absolute;inset:8% 10%;
+  background:radial-gradient(circle,rgba(255,79,123,.28),transparent 68%);
+  filter:blur(30px);
+}
+canvas{position:relative;width:100%;height:100%;display:block;touch-action:manipulation;cursor:pointer}
+.cap{min-height:120px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:4px}
+.big{
+  font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-weight:600;
+  font-size:clamp(2.6rem,10vw,4.2rem);line-height:1.05;color:var(--gold);
+  margin:0;transition:opacity .5s;
+}
+.sub{margin:0;color:var(--muted);font-size:.98rem;line-height:1.5;max-width:30em;transition:opacity .5s}
+.hide{opacity:0}
+button{
+  margin-top:14px;font:inherit;font-size:.95rem;color:var(--ink);
+  background:rgba(255,79,123,.16);border:1px solid rgba(255,79,123,.55);
+  padding:11px 26px;border-radius:999px;cursor:pointer;transition:background .2s,transform .2s;
+}
+button:hover{background:rgba(255,79,123,.3)}
+button:active{transform:scale(.96)}
+button:focus-visible,canvas:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+</style>
+</head>
+<body>
+<main>
+  <div class="stage"><canvas id="c" tabindex="0" aria-label="Serce ułożone ze słów „kocham cię” w wielu językach świata"></canvas></div>
+  <div class="cap" aria-live="polite">
+    <p class="big hide" id="big">Kocham Cię</p>
+    <p class="sub hide" id="sub"></p>
+  </div>
+  <button id="again" type="button">Jeszcze raz</button>
+</main>
+
+<script>
+(function(){
+var L=[
+["Kocham Cię","polski"],["I love you","angielski"],["Te amo","hiszpański"],["Je t’aime","francuski"],
+["Ich liebe dich","niemiecki"],["Ti amo","włoski"],["Eu te amo","portugalski"],["Ik hou van jou","niderlandzki"],
+["Jag älskar dig","szwedzki"],["Jeg elsker deg","norweski"],["Jeg elsker dig","duński"],["Minä rakastan sinua","fiński"],
+["Я тебя люблю","rosyjski"],["Я тебе кохаю","ukraiński"],["Miluji tě","czeski"],["Ľúbim ťa","słowacki"],
+["Szeretlek","węgierski"],["Te iubesc","rumuński"],["Обичам те","bułgarski"],["Volim te","chorwacki"],
+["Волим те","serbski"],["Ljubim te","słoweński"],["Σ’αγαπώ","grecki"],["Seni seviyorum","turecki"],
+["أحبك","arabski"],["אני אוהב אותך","hebrajski"],["دوستت دارم","perski"],["मैं तुमसे प्यार करता हूँ","hindi"],
+["我爱你","chiński"],["愛してる","japoński"],["사랑해","koreański"],["Aku cinta kamu","indonezyjski"],
+["Mahal kita","tagalski"],["ฉันรักเธอ","tajski"],["Anh yêu em","wietnamski"],["Nakupenda","suahili"],
+["Ngiyakuthanda","zulu"],["Ek is lief vir jou","afrikaans"],["Mo nifẹ rẹ","joruba"],["Aloha au iā ʻoe","hawajski"],
+["Ka aroha ahau ki a koe","maoryski"],["Mi amas vin","esperanto"],["Ég elska þig","islandzki"],["Rwy’n dy garu di","walijski"],
+["Maite zaitut","baskijski"],["T’estimo","kataloński"],["Mīlu tevi","łotewski"],["Aš tave myliu","litewski"],
+["Ma armastan sind","estoński"],["Të dua","albański"],["Mən səni sevirəm","azerski"],["მიყვარხარ","gruziński"],
+["Ես քեզ սիրում եմ","ormiański"],["Мен сені сүйемін","kazachski"],["Би чамд хайртай","mongolski"],["আমি তোমাকে ভালোবাসি","bengalski"],
+["நான் உன்னை காதலிக்கிறேன்","tamilski"],["Men seni sevaman","uzbecki"],["Tá grá agam duit","irlandzki"],["Σε αγαπάω","grecki (potocznie)"]
+];
+var cv=document.getElementById('c'),ctx=cv.getContext('2d');
+var big=document.getElementById('big'),sub=document.getElementById('sub');
+var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var W,H,dpr,words=[],start=0,hot=-1,maxDelay=0,doneShown=false;
+var cols=['#ff4f7b','#ff7a9c','#ffa3b8','#ffc9d6','#ff5c8a','#ffb08a'];
+var FONT='system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif';
+
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t}return a}
+function seed(){ // seeded-ish stable layout per size
+  var r=cv.getBoundingClientRect();W=r.width;H=r.height;dpr=Math.min(window.devicePixelRatio||1,2.5);
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);
+  build();
+}
+function build(){
+  words=[];var S=W/2.75,cx=W/2,cy=H/2,fs=W/24,rowH=fs*1.42;
+  function inside(px,py){var x=(px-cx)/S,y=(cy-py)/S+0.12,a=x*x+y*y-1;return a*a*a-x*x*y*y*y<=0}
+  var q=shuffle(L),qi=0,rows=0;
+  ctx.textBaseline='middle';
+  for(var py=cy-1.2*S;py<cy+1.15*S;py+=rowH){
+    var segs=[],s0=-1;
+    for(var px=0;px<=W;px+=2){
+      var ok=inside(px,py-fs*.42)&&inside(px,py+fs*.42);
+      if(ok&&s0<0)s0=px;
+      if((!ok||px+2>W)&&s0>=0){if(px-s0>fs*2.2)segs.push([s0+fs*.25,px-fs*.25]);s0=-1}
+    }
+    segs.forEach(function(sg){
+      var avail=sg[1]-sg[0],row=[],used=0,gap=fs*.9,tries=0;
+      while(tries<8){
+        var it=q[qi%q.length],size=fs*(0.9+Math.random()*0.25);
+        ctx.font='600 '+size+'px '+FONT;
+        var w=ctx.measureText(it[0]).width;
+        if(used+w+(row.length?gap:0)<=avail){row.push({t:it[0],l:it[1],fs:size,w:w});used+=w+(row.length>1?gap:0);qi++;tries=0}
+        else{qi++;tries++}
+      }
+      if(!row.length)return;
+      var tw=row.reduce(function(a,b){return a+b.w},0);
+      var g=row.length>1?Math.min((avail-tw)/(row.length-1),fs*2):0;
+      var x=sg[0]+(avail-(tw+g*(row.length-1)))/2;
+      row.forEach(function(o){
+        var wx=x+o.w/2;x+=o.w+g;
+        var dx=(wx-cx)/S,dy=(cy-py)/S-0.2,d=Math.sqrt(dx*dx+dy*dy);
+        var pl=o.l==='polski';
+        words.push({t:o.t,l:o.l,fs:o.fs*(pl?1.12:1),w:o.w,x:wx,y:py,
+          c:pl?'#ffd9a3':cols[Math.floor(Math.random()*cols.length)],
+          d:d,delay:d*1500+Math.random()*450});
+      });
+    });
+    rows++;
+  }
+  maxDelay=0;words.forEach(function(w){if(w.delay>maxDelay)maxDelay=w.delay});
+  words.sort(function(a,b){return a.delay-b.delay});
+  var n=new Set(words.map(function(w){return w.l})).size;
+  sub.textContent='w '+n+' językach świata – i w każdym znaczy dokładnie to samo.';
+}
+function ease(t){return 1-Math.pow(1-t,3)}
+function frame(now){
+  if(!start)start=now;var t=now-start;
+  ctx.clearRect(0,0,W,H);
+  var allIn=reduce||t>maxDelay+700;
+  var beat=1;
+  if(allIn&&!reduce){var p=((t-maxDelay-700)/1300)%1;
+    beat=1+0.028*(Math.pow(Math.max(0,Math.sin(p*Math.PI*2)),6)+0.6*Math.pow(Math.max(0,Math.sin(p*Math.PI*2-1.0)),6))}
+  ctx.save();ctx.translate(W/2,H/2);ctx.scale(beat,beat);ctx.translate(-W/2,-H/2);
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  for(var i=0;i<words.length;i++){
+    var w=words[i],pr=reduce?1:Math.min(1,Math.max(0,(t-w.delay)/600));
+    if(pr<=0)continue;var e=ease(pr),h=(i===hot);
+    ctx.save();ctx.translate(w.x,w.y);var sc=(0.55+0.45*e)*(h?1.18:1);ctx.scale(sc,sc);
+    ctx.globalAlpha=h?1:e*0.92;ctx.fillStyle=h?'#ffffff':w.c;
+    ctx.font=(h?'700 ':'600 ')+w.fs+'px '+FONT;
+    if(h){ctx.shadowColor='#ff4f7b';ctx.shadowBlur=18}
+    ctx.fillText(w.t,0,0);ctx.restore();
+  }
+  ctx.restore();
+  if(allIn&&!doneShown){doneShown=true;big.classList.remove('hide');sub.classList.remove('hide')}
+  requestAnimationFrame(frame);
+}
+function pick(e){
+  var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,best=-1,bd=1e9;
+  for(var i=0;i<words.length;i++){var w=words[i];
+    if(Math.abs(x-w.x)<w.w/2+8&&Math.abs(y-w.y)<w.fs*.8){var d=Math.abs(x-w.x)+Math.abs(y-w.y);if(d<bd){bd=d;best=i}}}
+  if(best>=0){hot=best;big.textContent=words[best].t;sub.textContent='po '+words[best].l+'u';
+    var l=words[best].l;sub.textContent=l==='polski'?'po polsku – tak jak najlepiej umiem':'język: '+l;
+    big.style.fontSize=words[best].t.length>16?'clamp(1.8rem,7vw,2.8rem)':'';}
+}
+cv.addEventListener('pointerdown',pick);
+cv.addEventListener('pointermove',function(e){if(e.pointerType==='mouse')pick(e)});
+function replay(){
+  hot=-1;doneShown=false;start=0;big.classList.add('hide');sub.classList.add('hide');
+  big.textContent='Kocham Cię';big.style.fontSize='';build();
+}
+document.getElementById('again').addEventListener('click',replay);
+var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){var d=doneShown;seed();if(d){start=performance.now()-maxDelay-1000;doneShown=false}},150)});
+(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(function(){seed();requestAnimationFrame(frame)});
+})();
+</script>
+</body>
+</html>
